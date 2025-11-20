@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UNIFIED OMNI-SYSTEM v1.1</title>
+  <!-- (Keep original CSS here; only add classes for new features as needed) -->
+  <style>
+    /* New styles for mini-nav & plugin bar */
+    .profile-area { padding: 16px 0; text-align: center; border-bottom: 1px solid #333; }
+    .profile-avatar { width: 48px; height: 48px; border-radius: 50%; margin-bottom: 8px; }
+    .toast { position:fixed;bottom:30px;right:30px;background:rgba(0,242,255,0.85);color:#000;padding:12px 28px;border-radius:999px;z-index:300;display:none;font-weight:bold;font-size:15px;box-shadow:0 6px 24px rgba(0,242,255,0.08);}
+    .plugin-bar { padding: 10px 0; margin-top: 24px; display: flex; justify-content: center; gap: 16px; background: rgba(0,0,0,0.22);}
+    .plugin-btn { background:#111;color:#ff00ff;border:1px solid #444;border-radius:8px;padding:8px 20px;cursor:pointer;}
+    .plugin-btn:hover {background:#ff00ff; color:#fff;}
+    .task-list { max-height: 240px; overflow:auto; }
+    .task-item { display:flex;align-items:center;gap:8px;padding:6px 0;}
+    .task-complete{ color: #00ff00; font-weight:900;}
+    .voice-btn { border:1px solid #00f2ff; background:none; color:#00f2ff; border-radius:20px; padding:8px 18px; cursor:pointer;}
+    .voice-btn.active { background:#00f2ff; color:#000;}
+    /* ... (rest unchanged) ... */
+  </style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div id="app" class="container">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <!-- NEW FEATURE: Profile area -->
+    <div class="profile-area">
+      <img class="profile-avatar" id="userAvatar" src="https://api.dicebear.com/7.x/pixel-art/svg?seed=VaultKeeper" alt="avatar">
+      <div style="font-size:16px;color:#ff00ff;font-weight:bold;" id="userNameDisplay">Vault Keeper</div>
+      <div id="userLevelDisplay" style="font-size:12px;color:#00ff00;">Level 1 • 0 XP</div>
+      <button class="voice-btn" onclick="toggleVoiceInput()" id="voiceBtn">🎤 Voice Input</button>
+    </div>
+    <!-- (rest of sidebar unchanged) -->
+    <div class="plugin-bar">
+      <!-- NEW FEATURE: Plugin system (UI stub, no logic) -->
+      <button class="plugin-btn" onclick="showPluginManager()">⚙️ Plugins</button>
+      <button class="plugin-btn" onclick="showTaskManager()">📋 Tasks</button>
+      <button class="plugin-btn" onclick="exportDashboard()">🖨️ Export</button>
+    </div>
+  </aside>
+  <!-- Main Content -->
+  <main class="main-content">
+    <!-- Dashboard -->
+    <div id="dashboard" class="view active">
+      <div class="view-header">
+        <h2>DevVault Dashboard</h2>
+        <p id="dashboardSubtitle">Session #1 • Frequency: 🔇 Off</p>
+      </div>
+      <div class="stats-grid">
+        <!-- (Cards unchanged) -->
+      </div>
+      <div class="content-grid">
+        <div class="card">
+          <h3>📸 Recent Memories</h3>
+          <div class="memory-list" id="memoriesList"></div>
+        </div>
+        <div class="card">
+          <h3 class="green">🏆 Achievements</h3>
+          <div class="memory-list" id="achievementsList"></div>
+        </div>
+        <div class="card">
+          <h3 class="violet">Omnitasks (To-Do)</h3>
+          <!-- NEW FEATURE: Task List -->
+          <div class="task-list" id="taskList"></div>
+          <input type="text" id="taskInput" placeholder="New task..." style="margin-bottom:8px;">
+          <button class="btn green" onclick="addTask()">Add Task</button>
+        </div>
+      </div>
+    </div>
+    <!-- UPGRADE: Add other views as before, but consider hooks like .plugin-bar, hooks for advanced imports/exports, etc. -->
+    <!-- ...rest unchanged... -->
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+  // UPGRADE: Additions to state for profile, tasks, plugins, voice, etc.
+  let vaultState = {
+    sessions: 1,
+    aethericCoins: 0,
+    conceptualDensity: 0,
+    metaphoricalEntropy: 0,
+    intentVelocity: 0,
+    currentTheme: 'cosmic',
+    currentMode: 'C',
+    currentFrequency: '🔇 Off',
+    memories: [],
+    achievements: ['first-session'],
+    xp: 0, // NEW: for leveling
+    userLevel: 1,
+    username: "Vault Keeper",
+    userAvatar: "https://api.dicebear.com/7.x/pixel-art/svg?seed=VaultKeeper",
+    tasks: [], // NEW: tasks
+    plugins: [],
+    voiceInputEnabled: false
+  };
+  // TOAST
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.style.display = 'block';
+    setTimeout(()=>{ toast.style.display='none';}, 3300);
+  }
+  // UPGRADE: Tasks
+  function renderTasks() {
+    const list = document.getElementById('taskList');
+    if (!vaultState.tasks.length) {
+      list.innerHTML = '<div class="empty-state">No tasks yet...</div>';
+    } else {
+      list.innerHTML = vaultState.tasks.map((t,i) =>
+        `<div class="task-item">
+          <input type="checkbox" ${t.done?'checked':''} onclick="toggleTask(${i})">
+          <span class="${t.done?'task-complete':''}">${t.text}</span>
+          <button class="btn" style="width:auto;background:#ff0033;" onclick="deleteTask(${i})">✕</button>
+        </div>`
+      ).join('');
+    }
+  }
+  function addTask() {
+    const input = document.getElementById('taskInput');
+    if (!input.value.trim()) { showToast("Task can't be empty"); return; }
+    vaultState.tasks.push({ text: input.value.trim(), done: false });
+    input.value = '';
+    saveVault(); renderTasks(); showToast("Task added!");
+  }
+  function toggleTask(index) {
+    vaultState.tasks[index].done = !vaultState.tasks[index].done;
+    saveVault(); renderTasks();
+    showToast(vaultState.tasks[index].done ? "Task completed!" : "Task marked incomplete");
+  }
+  function deleteTask(index) {
+    vaultState.tasks.splice(index,1);
+    saveVault(); renderTasks(); showToast("Task removed");
+  }
+  function showTaskManager() {
+    switchView('dashboard');
+    showToast("Scroll to Omnitasks in dashboard!");
+  }
+  // XP, Leveling
+  function gainXP(amount) {
+    vaultState.xp += amount || 10;
+    if (vaultState.xp >= vaultState.userLevel*55) {
+      vaultState.xp = 0; vaultState.userLevel++; showToast("Level Up!");
+    }
+    updateProfile();
+  }
+  function updateProfile() {
+    document.getElementById('userAvatar').src = vaultState.userAvatar;
+    document.getElementById('userNameDisplay').textContent = vaultState.username;
+    document.getElementById('userLevelDisplay').textContent = `Level ${vaultState.userLevel} • ${vaultState.xp} XP`;
+  }
+  // Voice Input (stub)
+  let recognizing = false;
+  function toggleVoiceInput() {
+    vaultState.voiceInputEnabled = !vaultState.voiceInputEnabled;
+    document.getElementById('voiceBtn').classList.toggle('active', vaultState.voiceInputEnabled);
+    showToast(vaultState.voiceInputEnabled ? "Voice input enabled (stub)" : "Voice input disabled");
+    // TODO: Implement real Web Speech API integration!
+  }
+  // Plugin stub
+  function showPluginManager() { showToast("Plugin manager coming soon!"); } 
+  // Export/PDF stub
+  function exportDashboard() { showToast("Export as image/PDF coming soon!"); }
+  // Rewrite updateUI with XP, task, profile logic
+  function updateUI() {
+    // ...same as before...
+    document.getElementById('sidebarSessions').textContent = vaultState.sessions;
+    document.getElementById('sidebarCoins').textContent = vaultState.aethericCoins.toFixed(2);
+    document.getElementById('sidebarAchievements').textContent = vaultState.achievements.length;
+    document.getElementById('cdensity').textContent = vaultState.conceptualDensity.toFixed(2);
+    document.getElementById('mentropy').textContent = vaultState.metaphoricalEntropy.toFixed(2);
+    document.getElementById('ivelocity').textContent = vaultState.intentVelocity.toFixed(2);
+    document.getElementById('coins').textContent = vaultState.aethericCoins.toFixed(2);
+    document.getElementById('dashboardSubtitle').textContent =
+      `Session #${vaultState.sessions} • Frequency: ${vaultState.currentFrequency}`;
+    // Profile
+    updateProfile();
+    // Memories/Achievements
+    const memoriesList = document.getElementById('memoriesList');
+    memoriesList.innerHTML =
+      vaultState.memories.length ?
+      vaultState.memories.map(m => `<div class="memory-item">${m}</div>`).join('') :
+      '<div class="empty-state">No memories yet...</div>';
+    document.getElementById('achievementsList').innerHTML =
+      vaultState.achievements.map(a=>`<div class="achievement-item">✓ ${a}</div>`).join('');
+    // NEW: Tasks
+    renderTasks();
+  }
+  // (Other unchanged logic: localStorage, switchView, memory, coins, etc.)
+  function loadVault() {
+    const saved = localStorage.getItem('omniVault');
+    if (saved) { vaultState = JSON.parse(saved); }
+    updateUI();
+    renderTasks();
+  }
+  function saveVault() { localStorage.setItem('omniVault', JSON.stringify(vaultState)); }
+  // ...Keep other original functions (switchView, etc), only augment with gainXP/addTask when appropriate...
+  // Initialize
+  loadVault();
+</script>
+</body>
+</html>
