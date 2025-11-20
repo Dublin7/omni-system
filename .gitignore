@@ -1,0 +1,16 @@
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.log*
+
+# Env
+.env
+
+# Editor
+*.swp
+*.swo
+
+# Node dependencies (if ever used in future extensions)
+node_modules/
